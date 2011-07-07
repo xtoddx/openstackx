@@ -375,6 +375,125 @@ class AdminFlavorController(ExtrasFlavorController):
         return exc.HTTPAccepted()
 
 
+class MetaController(object):
+    def _qs(self, req, field, default=None):
+        qs = req.environ.get('QUERY_STRING', '')
+        env = urlparse.parse_qs(qs)
+        return env.get('field', default)
+
+
+class AdminFixedIPController(MetaController):
+    """Class for managing fixed ip."""
+
+    def index(self, req):
+        """Lists all fixed ips (optionally by host) arguments: [host]"""
+        context = req.environ['nova.context']
+        host = self._qs(req, 'host')
+
+        if host:
+            fixed_ips = db.fixed_ip_get_all_by_host(context, host)
+        else:
+            fixed_ips = db.fixed_ip_get_all(context)
+
+        rval = []
+        for fixed_ip in fixed_ips:
+            hostname = None
+            host = None
+            mac_address = None
+            if fixed_ip['instance']:
+                instance = fixed_ip['instance']
+                hostname = instance['hostname']
+                host = instance['host']
+                mac_address = instance['mac_address']
+            rval.append({'ip': fixed_ip['address'],
+                         'network': fixed_ip['network']['cidr'],
+                         'mac': mac_address,
+                         'instance': instance['id'],
+                         'host': instance['host']})
+        return {'fixed_ips': rval}
+
+
+class AdminFloatingIPController(MetaController):
+    """Class for managing floating ip."""
+
+    def create(self, host, range):
+        """Creates floating ips for host by range
+        arguments: host ip_range"""
+        context = req.environ['nova.context']
+        
+        for address in IPy.IP(range):
+            db.floating_ip_create(context,
+                                  {'address': str(address),
+                                   'host': host})
+
+   def delete(self, req, id):
+        """Deletes floating ip by address"""
+        context = req.environ['nova.context']
+        
+        address = IPy.IP(id):
+        db.floating_ip_destroy(context, str(address))
+        return exc.HTTPAccepted()
+
+   def index(self, req):
+        """Lists all floating ips"""
+
+        context = req.environ['nova.context']
+
+        floating_ips = db.floating_ip_get_all(context)
+
+        for floating_ip in floating_ips:
+            instance = None
+            if floating_ip['fixed_ip']:
+                instance = floating_ip['fixed_ip']['instance']['ec2_id']
+            print "%s\t%s\t%s" % (floating_ip['host'],
+                                  floating_ip['address'],
+                                  instance)
+
+
+class NetworkCommands(object):
+    """Class for managing networks."""
+
+    def create(self, fixed_range=None, num_networks=None,
+               network_size=None, vlan_start=None,
+               vpn_start=None, fixed_range_v6=None, label='public'):
+        """Creates fixed ips for host by range
+        arguments: [fixed_range=FLAG], [num_networks=FLAG],
+                   [network_size=FLAG], [vlan_start=FLAG],
+                   [vpn_start=FLAG], [fixed_range_v6=FLAG]"""
+        if not fixed_range:
+            fixed_range = FLAGS.fixed_range
+        if not num_networks:
+            num_networks = FLAGS.num_networks
+        if not network_size:
+            network_size = FLAGS.network_size
+        if not vlan_start:
+            vlan_start = FLAGS.vlan_start
+        if not vpn_start:
+            vpn_start = FLAGS.vpn_start
+        if not fixed_range_v6:
+            fixed_range_v6 = FLAGS.fixed_range_v6
+        net_manager = utils.import_object(FLAGS.network_manager)
+        net_manager.create_networks(context.get_admin_context(),
+                                    cidr=fixed_range,
+                                    num_networks=int(num_networks),
+                                    network_size=int(network_size),
+                                    vlan_start=int(vlan_start),
+                                    vpn_start=int(vpn_start),
+                                    cidr_v6=fixed_range_v6,
+                                    label=label)
+
+    def list(self):
+        """List all created networks"""
+        print "%-18s\t%-15s\t%-15s\t%-15s" % (_('network'),
+                                              _('netmask'),
+                                              _('start address'),
+                                              'DNS')
+        for network in db.network_get_all(context.get_admin_context()):
+            print "%-18s\t%-15s\t%-15s\t%-15s" % (network.cidr,
+                                network.netmask,
+                                network.dhcp_start,
+                                network.dns)
+
 class UsageController(object):
 
     def _hours_for(self, instance, period_start, period_stop):
@@ -772,6 +891,8 @@ class Admin(object):
                                              AdminFlavorController()))
         resources.append(extensions.ResourceExtension('extras/usage',
                                              UsageController()))
+        resources.append(extensions.ResourceExtension('admin/fixed_ips',
+                                             AdminFixedIPController()))
         resources.append(extensions.ResourceExtension('extras/flavors',
                                              ExtrasFlavorController()))
         resources.append(extensions.ResourceExtension('extras/servers',

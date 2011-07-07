@@ -2,6 +2,7 @@ from openstackx.api.connection import ApiConnection
 from openstackx.admin.projects import ProjectManager
 from openstackx.admin.services import ServiceManager
 from openstackx.admin.flavors import FlavorManager
+from openstackx.admin.fixed_ips import FixedIPManager
 from openstackx.api.config import Config
 
 
@@ -29,6 +30,7 @@ class Admin(object):
         self.projects = ProjectManager(self)
         self.services = ServiceManager(self)
         self.flavors = FlavorManager(self)
+        self.fixed_ips = FixedIPManager(self)
 
     def authenticate(self):
         """
