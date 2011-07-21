@@ -12,13 +12,13 @@ else:
     host = 'localhost'
 
 
-auth = openstackx.auth.Auth(management_url='http://%s:8080/v2.0/' % host)
+auth = openstackx.auth.Auth(management_url='http://%s:5000/v2.0/' % host)
 token = auth.tokens.create('1234', 'admin', 'secrete')
 print token._info
 
 admin_token = auth.tokens.create('1234', 'admin', 'secrete')
 accounts = openstackx.extras.Account(auth_token=admin_token.id,
-        management_url='http://%s:8081/v2.0' % host)
+        management_url='http://%s:5001/v2.0' % host)
 
 extras = openstackx.extras.Extras(auth_token=token.id,
                                  auth_url='http://%s:8774/v1.1/' % host,
@@ -33,11 +33,15 @@ compute = openstackx.compute.Compute(auth_token=token.id,
                                     management_url='http://%s:8774/v1.1/' % host)
 #services =  admin.services.list()
 
+
 print "#####################################################################"
 print admin.quota_sets.list(True)
 print "#####################################################################"
 
 
+print "#####################################################################"
+print extras.floating_ips.list()
+print "#####################################################################"
 
 print "-----"
 print "-----"

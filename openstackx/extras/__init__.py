@@ -1,6 +1,7 @@
 from openstackx.api.connection import ApiConnection
 from openstackx.extras.consoles import ConsoleManager
 from openstackx.extras.flavors import FlavorManager
+from openstackx.extras.floating_ips import FloatingIpManager
 from openstackx.extras.keypairs import KeypairManager
 from openstackx.extras.servers import ServerManager
 from openstackx.extras.snapshots import SnapshotManager
@@ -35,6 +36,7 @@ class Extras(object):
         self.consoles = ConsoleManager(self)
         self.usage = UsageManager(self)
         self.flavors = FlavorManager(self)
+        self.floating_ips = FloatingIpManager(self)
         self.servers = ServerManager(self)
         self.keypairs = KeypairManager(self)
         self.snapshots = SnapshotManager(self)
