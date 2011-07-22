@@ -2,7 +2,7 @@ from openstackx.api import base
 
 class FloatingIp(base.Resource):
     def __repr__(self):
-        return "<Floating_ip: %s>" % self.floating_ip['ip']
+        return "<Floating_ip: %s>" % self.id
 
 class FloatingIpManager(base.ManagerWithFind):
     """
@@ -18,3 +18,40 @@ class FloatingIpManager(base.ManagerWithFind):
         """
         return self._list("/os-floating-ips", "floating_ips")
 
+
+    def get(self, id):
+        """
+        Get a specific floating_ip
+        """
+        return self._get("/os-floating-ips/%s" % id, "floating_ip")
+
+
+    def attach(self):
+        """
+        Allocate a single floating IP to a project
+        """
+        return self._create("/os-floating-ips", '', 'allocated')
+
+
+    def release(self, id):
+        """
+        Release IP from project
+        """
+        return self._delete('/os-floating-ips/%s' % id)
+
+
+    def associate(self, id, fixed_ip):
+        """
+        Associate IP with a fixed ip
+        """
+        body =  {'fixed_ip': fixed_ip}
+        return self._create('/os-floating-ips/%s/associate' % id, body,
+                            'associated')
+
+
+    def disassociate(self, id):
+        """
+        Removes assignment of a floating ip from a fixed ip
+        """
+        return self._create('/os-floating-ips/%s/disassociate' % id, '',
+                            'disassociated')
