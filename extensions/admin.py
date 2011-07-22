@@ -996,7 +996,7 @@ class Admin(object):
                                                  AdminQuotasController()))
         resources.append(extensions.ResourceExtension('extras/consoles',
                                              ExtrasConsoleController()))
-        resources.append(extensions.ResourceExtension('extras/floating-ips',
+        resources.append(extensions.ResourceExtension('extras/os-floating-ips',
                                                       FloatingIPController(),
                                                       member_actions={
                                                       'associate': 'POST',
