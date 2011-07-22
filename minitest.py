@@ -33,20 +33,26 @@ compute = openstackx.compute.Compute(auth_token=token.id,
                                     management_url='http://%s:8774/v1.1/' % host)
 #services =  admin.services.list()
 
-
 # print "#####################################################################"
 # print admin.quota_sets.list(True)
 # print "#####################################################################"
 # 
 # 
+
+## Uncomment to get interactive shell
+# import pdb
+# pdb.set_trace()
+
 print "#####################################################################"
-#print extras.floating_ips.list()[0].__dict__
-#print extras.floating_ips.get(9).__dict__
-#print extras.floating_ips.associate(2, "10.0.0.3")
-print extras.floating_ips.disassociate(1)
 #print extras.floating_ips.attach()
+#print extras.floating_ips.attach()
+#print extras.floating_ips.attach()
+#print extras.floating_ips.get(2)
+#print extras.floating_ips.release(2)
+#print extras.floating_ips.associate(1, "10.0.0.3")
+#print extras.floating_ips.disassociate(1)
+#print extras.floating_ips.list()
 print "#####################################################################"
-# 
 # print "-----"
 # print "-----"
 # #print accounts.tenants.get('1234')

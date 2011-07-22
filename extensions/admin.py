@@ -21,14 +21,15 @@ import urlparse
 from datetime import datetime
 from webob import exc
 
-
 from nova import compute
 from nova import crypto
 from nova import db
 from nova import exception
 from nova import flags
 from nova import log as logging
+from nova import network
 from nova import quota
+from nova import rpc
 import nova.image
 from nova.api.openstack import create_instance_helper
 from nova.auth import manager as auth_manager
@@ -50,6 +51,158 @@ flags.DECLARE('max_gigabytes', 'nova.scheduler.simple')
 flags.DECLARE('max_cores', 'nova.scheduler.simple')
 
 LOG = logging.getLogger('nova.api.openstack.admin')
+
+
+class FloatingIPController(object):
+    """The Floating IPs API controller for the OpenStack API."""
+
+    _serialization_metadata = {
+        'application/xml': {
+            "attributes": {
+                "floating_ip": [
+                    "id",
+                    "ip",
+                    "instance_id",
+                    "fixed_ip",
+                    ]}}}
+
+
+    def _translate_floating_ip_view(floating_ip):
+        result = {'id': floating_ip['id'],
+                  'ip': floating_ip['address']}
+        if 'fixed_ip' in floating_ip:
+            result['fixed_ip'] = floating_ip['fixed_ip']
+        else:
+            result['fixed_ip'] = None
+        if 'instance' in floating_ip:
+            result['instance_id'] = floating_ip['instance']['id']
+        else:
+            result['instance_id'] = None
+        return result
+
+    def _translate_floating_ips_view(floating_ips):
+        return {'floating_ips': [_translate_floating_ip_view(floating_ip)
+                                 for floating_ip in floating_ips]}
+
+    def __init__(self):
+        self.network_api = network.API()
+        super(FloatingIPController, self).__init__()
+
+    def show(self, req, id):
+        """Return data about the given floating ip."""
+        context = req.environ['nova.context']
+
+        try:
+            floating_ip = self.network_api.get_floating_ip(context, id)
+        except exception.NotFound:
+            return faults.Fault(exc.HTTPNotFound())
+
+        return {'floating_ip': _translate_floating_ip_view(floating_ip)}
+
+    def index(self, req):
+        context = req.environ['nova.context']
+
+        floating_ips = self.network_api.list_floating_ips(context)
+
+        return _translate_floating_ips_view(floating_ips)
+
+    def create(self, req, body):
+        context = req.environ['nova.context']
+
+        try:
+            address = self.network_api.allocate_floating_ip(context)
+            ip = self.network_api.get_floating_ip_by_ip(context, address)
+        except rpc.RemoteError as ex:
+            # NOTE(tr3buchet) - why does this block exist?
+            if ex.exc_type == 'NoMoreFloatingIps':
+                raise exception.NoMoreFloatingIps()
+            else:
+                raise
+
+        return {'allocated': {
+            "id": ip['id'],
+            "floating_ip": ip['address']}}
+
+    def delete(self, req, id):
+        context = req.environ['nova.context']
+
+        ip = self.network_api.get_floating_ip(context, id)
+
+        if 'fixed_ip' in ip:
+            self.disassociate(req, id, '')
+
+        self.network_api.release_floating_ip(context, address=ip['address'])
+
+        return {'released': {
+            "id": ip['id'],
+            "floating_ip": ip['address']}}
+
+    def associate(self, req, id, body):
+        """ /floating_ips/{id}/associate  fixed ip in body """
+        context = req.environ['nova.context']
+        floating_ip = self.network_api.get_floating_ip(context, id)
+
+        fixed_ip = body['fixed_ip']
+
+        try:
+            self.network_api.associate_floating_ip(context,
+                                                   floating_ip['address'],
+                                                   fixed_ip)
+        except rpc.RemoteError:
+            raise
+
+        return {'associated': {'id': floating_ip['id'],
+                               'fixed_ip': floating_ip['fixed_ip'],
+                               'floating_ip': floating_ip['address']}}
+
+    def disassociate(self, req, id, body):
+        """ POST /floating_ips/{id}/disassociate """
+        context = req.environ['nova.context']
+        floating_ip = self.network_api.get_floating_ip(context, id)
+        address = floating_ip['address']
+        fixed_ip = floating_ip['fixed_ip']
+
+        try:
+            self.network_api.disassociate_floating_ip(context, address)
+        except rpc.RemoteError:
+            raise
+
+        return {'disassociated': {'id': floating_ip['id'],
+                                  'floating_ip': address,
+                                  'fixed_ip': fixed_ip}}
+
+    def _get_ip_by_id(self, context, value):
+        """Checks that value is id and then returns its address."""
+        return self.network_api.get_floating_ip(context, value)['address']
+
+
+class Floating_ips(extensions.ExtensionDescriptor):
+    def get_name(self):
+        return "Floating_ips"
+
+    def get_alias(self):
+        return "os-floating-ips"
+
+    def get_description(self):
+        return "Floating IPs support"
+
+    def get_namespace(self):
+        return "http://docs.openstack.org/ext/floating_ips/api/v1.1"
+
+    def get_updated(self):
+        return "2011-06-16T00:00:00+00:00"
+
+    def get_resources(self):
+        resources = []
+
+        res = extensions.ResourceExtension('os-floating-ips',
+                         FloatingIPController(),
+                         member_actions={
+                            'associate': 'POST',
+                            'disassociate': 'POST'})
+        resources.append(res)
+
+        return resources
 
 
 class AdminQuotasController(object):
@@ -834,6 +987,7 @@ class Admin(object):
 
     def get_resources(self):
         resources = []
+        
         resources.append(extensions.ResourceExtension('admin/projects',
                                                  AdminProjectController()))
         resources.append(extensions.ResourceExtension('admin/services',
@@ -842,6 +996,11 @@ class Admin(object):
                                                  AdminQuotasController()))
         resources.append(extensions.ResourceExtension('extras/consoles',
                                              ExtrasConsoleController()))
+        resources.append(extensions.ResourceExtension('extras/floating-ips',
+                                                      FloatingIPController(),
+                                                      member_actions={
+                                                      'associate': 'POST',
+                                                      'disassociate': 'POST'}))
         resources.append(extensions.ResourceExtension('admin/flavors',
                                              AdminFlavorController()))
         resources.append(extensions.ResourceExtension('extras/usage',
