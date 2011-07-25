@@ -264,15 +264,6 @@ class AdminFloatingIpController(object):
                                   'fixed_ip': fixed_ip}}
 
 
-
-
-
-
-
-
-
-
-
 class AdminQuotasController(object):
     def _format_quota_set(self, project_id, quota_set):
         """Convert the quota object to a result dict"""

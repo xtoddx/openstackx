@@ -54,6 +54,6 @@ class FloatingIpManager(base.ManagerWithFind):
         """
         Removes assignment of a floating ip from a fixed ip
         """
-        return self._create('/extras/floating-ips/%s/disassociate' % id, '',
+        return self._create('/admin/os-floating-ips/%s/disassociate' % id, '',
                             'disassociated')
 
