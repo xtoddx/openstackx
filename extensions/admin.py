@@ -188,6 +188,15 @@ class AdminFloatingIpController(object):
 
         return _translate_floating_ips_view(floating_ips)
 
+    def show(self, req, id):
+        context = req.environ['nova.context']
+
+        try:
+            floating_ip = self.network_api.get_floating_ip(context, id)
+        except exception.NotFound:
+            return faults.Fault(exc.HTTPNotFound())
+
+        return {'floating_ip': _translate_floating_ip_view(floating_ip)}
 
 class AdminQuotasController(object):
     def _format_quota_set(self, project_id, quota_set):

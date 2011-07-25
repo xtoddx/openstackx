@@ -23,7 +23,7 @@ class FloatingIpManager(base.ManagerWithFind):
         """
         Get a specific floating_ip
         """
-        return self._get("/extras/floating-ips/%s" % id, "floating_ip")
+        return self._get("/admin/os-floating-ips/%s" % id, "floating_ip")
 
 
     def attach(self):
