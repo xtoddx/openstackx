@@ -46,7 +46,7 @@ class FloatingIpManager(base.ManagerWithFind):
         Associate IP with a fixed ip
         """
         body =  {'fixed_ip': fixed_ip}
-        return self._create('/extras/floating-ips/%s/associate' % id, body,
+        return self._create('/admin/os-floating-ips/%s/associate' % id, body,
                             'associated')
 
 

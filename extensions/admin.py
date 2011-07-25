@@ -229,6 +229,24 @@ class AdminFloatingIpController(object):
             "id": ip['id'],
             "floating_ip": ip['address']}}
 
+    def associate(self, req, id, body):
+        """ /floating_ips/{id}/associate  fixed ip in body """
+        context = req.environ['nova.context']
+        floating_ip = self.network_api.get_floating_ip(context, id)
+
+        fixed_ip = body['fixed_ip']
+
+        try:
+            self.network_api.associate_floating_ip(context,
+                                                   floating_ip['address'],
+                                                   fixed_ip)
+        except rpc.RemoteError:
+            raise
+
+        return {'associated': {'id': floating_ip['id'],
+                               'fixed_ip': floating_ip['fixed_ip'],
+                               'floating_ip': floating_ip['address']}}
+
     def disassociate(self, req, id, body):
         """ POST /floating_ips/{id}/disassociate """
         context = req.environ['nova.context']
@@ -1047,7 +1065,10 @@ class Admin(object):
         resources.append(extensions.ResourceExtension('extras/consoles',
                                              ExtrasConsoleController()))
         resources.append(extensions.ResourceExtension('admin/os-floating-ips',
-                                                 AdminFloatingIpController()))
+                                                 AdminFloatingIpController(),
+                                                 member_actions={
+                                                    'associate': 'POST',
+                                                     'disassociate': 'POST'}))
         resources.append(extensions.ResourceExtension('extras/os-floating-ips',
                                                       FloatingIPController(),
                                                       member_actions={
