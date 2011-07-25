@@ -128,8 +128,11 @@ class FloatingIPController(object):
 
         ip = self.network_api.get_floating_ip(context, id)
 
-        if 'fixed_ip' in ip:
-            self.disassociate(req, id, '')
+        try:
+            if 'fixed_ip' in ip:
+                self.disassociate(req, id, '')
+        except:
+            pass
 
         self.network_api.release_floating_ip(context, address=ip['address'])
 
@@ -1046,7 +1049,7 @@ class Admin(object):
 
     def get_resources(self):
         resources = []
-        
+
         resources.append(extensions.ResourceExtension('admin/projects',
                                                  AdminProjectController()))
         resources.append(extensions.ResourceExtension('admin/services',

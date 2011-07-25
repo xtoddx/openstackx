@@ -4,11 +4,13 @@ class FloatingIp(base.Resource):
     def __repr__(self):
         return "<Floating_ip: %s>" % self.id
 
+
 class FloatingIpManager(base.ManagerWithFind):
     """
     Manage :class:`FloatingIp` resources.
     """
     resource_class = FloatingIp
+
 
     def list(self):
         """
@@ -16,28 +18,28 @@ class FloatingIpManager(base.ManagerWithFind):
 
         :rtype: list of :class:`FloatingIp.
         """
-        return self._list("/extras/floating-ips", "floating_ips")
+        return self._list("/extras/os-floating-ips", "floating_ips")
 
 
     def get(self, id):
         """
         Get a specific floating_ip
         """
-        return self._get("/extras/floating-ips/%s" % id, "floating_ip")
+        return self._get("/extras/os-floating-ips/%s" % id, "floating_ip")
 
 
     def attach(self):
         """
         Allocate a single floating IP to a project
         """
-        return self._create("/extras/floating-ips", '', 'allocated')
+        return self._create("/extras/os-floating-ips", '', 'allocated')
 
 
     def release(self, id):
         """
         Release IP from project
         """
-        return self._delete('/extras/floating-ips/%s' % id)
+        return self._delete('/extras/os-floating-ips/%s' % id)
 
 
     def associate(self, id, fixed_ip):
@@ -45,7 +47,7 @@ class FloatingIpManager(base.ManagerWithFind):
         Associate IP with a fixed ip
         """
         body =  {'fixed_ip': fixed_ip}
-        return self._create('/extras/floating-ips/%s/associate' % id, body,
+        return self._create('/extras/os-floating-ips/%s/associate' % id, body,
                             'associated')
 
 
@@ -53,5 +55,6 @@ class FloatingIpManager(base.ManagerWithFind):
         """
         Removes assignment of a floating ip from a fixed ip
         """
-        return self._create('/extras/floating-ips/%s/disassociate' % id, '',
+        return self._create('/extras/os-floating-ips/%s/disassociate' % id, '',
                             'disassociated')
+
