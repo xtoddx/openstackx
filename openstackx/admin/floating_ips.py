@@ -38,7 +38,7 @@ class FloatingIpManager(base.ManagerWithFind):
         """
         Release IP from project
         """
-        return self._delete('/extras/floating-ips/%s' % id)
+        return self._delete('/admin/os-floating-ips/%s' % id)
 
 
     def associate(self, id, fixed_ip):

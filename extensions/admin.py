@@ -202,7 +202,7 @@ class AdminFloatingIpController(object):
         context = req.environ['nova.context']
         context.project_id = body['project_id']
         try:
-            address = self.network_api.allocate_floating_ip(context)
+            address = db.floating_ip_allocate_address(context, context.project_id)
             ip = self.network_api.get_floating_ip_by_ip(context, address)
         except rpc.RemoteError as ex:
             if ex.exc_type == 'NoMoreFloatingIps':
@@ -214,11 +214,36 @@ class AdminFloatingIpController(object):
                 'id': ip['id'],
                 'floating_ip': ip['address']}}
 
+    def delete(self, req, id):
+        context = req.environ['nova.context']
+        ip = self.network_api.get_floating_ip(context, id)
 
+        if 'fixed_ip' in ip:
+            try:
+                self.disassociate(req, id, '')
+            except:
+                pass
+        self.network_api.release_floating_ip(context, address=ip['address'])
 
+        return {'released': {
+            "id": ip['id'],
+            "floating_ip": ip['address']}}
 
+    def disassociate(self, req, id, body):
+        """ POST /floating_ips/{id}/disassociate """
+        context = req.environ['nova.context']
+        floating_ip = self.network_api.get_floating_ip(context, id)
+        address = floating_ip['address']
+        fixed_ip = floating_ip['fixed_ip']
 
+        try:
+            self.network_api.disassociate_floating_ip(context, address)
+        except rpc.RemoteError:
+            raise
 
+        return {'disassociated': {'id': floating_ip['id'],
+                                  'floating_ip': address,
+                                  'fixed_ip': fixed_ip}}
 
 
 
