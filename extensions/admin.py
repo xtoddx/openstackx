@@ -198,6 +198,38 @@ class AdminFloatingIpController(object):
 
         return {'floating_ip': _translate_floating_ip_view(floating_ip)}
 
+    def create(self, req, body):
+        context = req.environ['nova.context']
+        context.project_id = body['project_id']
+        try:
+            address = self.network_api.allocate_floating_ip(context)
+            ip = self.network_api.get_floating_ip_by_ip(context, address)
+        except rpc.RemoteError as ex:
+            if ex.exc_type == 'NoMoreFloatingIps':
+                raise exception.NoMoreFloatingIps()
+            else:
+                raise
+
+        return {'allocated': {
+                'id': ip['id'],
+                'floating_ip': ip['address']}}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class AdminQuotasController(object):
     def _format_quota_set(self, project_id, quota_set):
         """Convert the quota object to a result dict"""

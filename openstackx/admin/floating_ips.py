@@ -26,11 +26,12 @@ class FloatingIpManager(base.ManagerWithFind):
         return self._get("/admin/os-floating-ips/%s" % id, "floating_ip")
 
 
-    def attach(self):
+    def attach(self, tenant_id):
         """
         Allocate a single floating IP to a project
         """
-        return self._create("/extras/floating-ips", '', 'allocated')
+        body = {'project_id': tenant_id}
+        return self._create("/admin/os-floating-ips", body, 'allocated')
 
 
     def release(self, id):
