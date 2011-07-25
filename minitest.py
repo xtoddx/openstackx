@@ -44,6 +44,7 @@ compute = openstackx.compute.Compute(auth_token=token.id,
 # pdb.set_trace()
 
 print "#####################################################################"
+print admin.floating_ips.list()
 #print extras.floating_ips.attach()
 #print extras.floating_ips.attach()
 #print extras.floating_ips.attach()

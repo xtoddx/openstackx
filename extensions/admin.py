@@ -53,6 +53,24 @@ flags.DECLARE('max_cores', 'nova.scheduler.simple')
 LOG = logging.getLogger('nova.api.openstack.admin')
 
 
+
+def _translate_floating_ip_view(floating_ip):
+    result = {'id': floating_ip['id'],
+              'ip': floating_ip['address']}
+    if 'fixed_ip' in floating_ip:
+        result['fixed_ip'] = floating_ip['fixed_ip']
+    else:
+        result['fixed_ip'] = None
+    if 'instance' in floating_ip:
+        result['instance_id'] = floating_ip['instance']['id']
+    else:
+        result['instance_id'] = None
+    return result
+
+def _translate_floating_ips_view(floating_ips):
+    return {'floating_ips': [_translate_floating_ip_view(floating_ip)
+                             for floating_ip in floating_ips]}
+
 class FloatingIPController(object):
     """The Floating IPs API controller for the OpenStack API."""
 
@@ -65,24 +83,6 @@ class FloatingIPController(object):
                     "instance_id",
                     "fixed_ip",
                     ]}}}
-
-
-    def _translate_floating_ip_view(floating_ip):
-        result = {'id': floating_ip['id'],
-                  'ip': floating_ip['address']}
-        if 'fixed_ip' in floating_ip:
-            result['fixed_ip'] = floating_ip['fixed_ip']
-        else:
-            result['fixed_ip'] = None
-        if 'instance' in floating_ip:
-            result['instance_id'] = floating_ip['instance']['id']
-        else:
-            result['instance_id'] = None
-        return result
-
-    def _translate_floating_ips_view(floating_ips):
-        return {'floating_ips': [_translate_floating_ip_view(floating_ip)
-                                 for floating_ip in floating_ips]}
 
     def __init__(self):
         self.network_api = network.API()
@@ -176,33 +176,17 @@ class FloatingIPController(object):
         return self.network_api.get_floating_ip(context, value)['address']
 
 
-class Floating_ips(extensions.ExtensionDescriptor):
-    def get_name(self):
-        return "Floating_ips"
+class AdminFloatingIpController(object):
 
-    def get_alias(self):
-        return "os-floating-ips"
+    def __init__(self):
+        self.network_api = network.API()
+        super(AdminFloatingIpController, self).__init__()
 
-    def get_description(self):
-        return "Floating IPs support"
+    def index(self, req):
+        context = req.environ['nova.context']
+        floating_ips = db.floating_ip_get_all(context)
 
-    def get_namespace(self):
-        return "http://docs.openstack.org/ext/floating_ips/api/v1.1"
-
-    def get_updated(self):
-        return "2011-06-16T00:00:00+00:00"
-
-    def get_resources(self):
-        resources = []
-
-        res = extensions.ResourceExtension('os-floating-ips',
-                         FloatingIPController(),
-                         member_actions={
-                            'associate': 'POST',
-                            'disassociate': 'POST'})
-        resources.append(res)
-
-        return resources
+        return _translate_floating_ips_view(floating_ips)
 
 
 class AdminQuotasController(object):
@@ -996,6 +980,8 @@ class Admin(object):
                                                  AdminQuotasController()))
         resources.append(extensions.ResourceExtension('extras/consoles',
                                              ExtrasConsoleController()))
+        resources.append(extensions.ResourceExtension('admin/os-floating-ips',
+                                                 AdminFloatingIpController()))
         resources.append(extensions.ResourceExtension('extras/os-floating-ips',
                                                       FloatingIPController(),
                                                       member_actions={
