@@ -101,9 +101,11 @@ class FloatingIPController(object):
 
     def index(self, req):
         context = req.environ['nova.context']
-
-        floating_ips = self.network_api.list_floating_ips(context)
-
+        floating_ips = []
+        try:
+            floating_ips = self.network_api.list_floating_ips(context)
+        except exception.FloatingIpNotFoundForProject:
+            pass
         return _translate_floating_ips_view(floating_ips)
 
     def create(self, req, body):
