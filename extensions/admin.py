@@ -89,6 +89,7 @@ class FloatingIPController(object):
 
     def __init__(self):
         self.network_api = network.API()
+        self.compute_api = compute.API()
         super(FloatingIPController, self).__init__()
 
     def show(self, req, id):
@@ -149,13 +150,12 @@ class FloatingIPController(object):
         """ /floating_ips/{id}/associate  fixed ip in body """
         context = req.environ['nova.context']
         floating_ip = self.network_api.get_floating_ip(context, id)
-
-        fixed_ip = body['fixed_ip']
+        instance_id = body['instance_id']
 
         try:
-            self.network_api.associate_floating_ip(context,
-                                                   floating_ip['address'],
-                                                   fixed_ip)
+            self.compute_api.associate_floating_ip(context,
+                                                   instance_id,
+                                                   floating_ip['address'])
         except rpc.RemoteError:
             raise
 
