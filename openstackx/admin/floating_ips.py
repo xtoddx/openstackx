@@ -41,14 +41,13 @@ class FloatingIpManager(base.ManagerWithFind):
         return self._delete('/admin/os-floating-ips/%s' % id)
 
 
-    def associate(self, id, fixed_ip):
+    def associate(self, id, instance_id):
         """
         Associate IP with a fixed ip
         """
-        body =  {'fixed_ip': fixed_ip}
-        return self._create('/admin/os-floating-ips/%s/associate' % id, body,
+        body =  {'instance_id': instance_id}
+        return self._create('/extras/os-floating-ips/%s/associate' % id, body,
                             'associated')
-
 
     def disassociate(self, id):
         """
