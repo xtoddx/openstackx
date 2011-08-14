@@ -519,10 +519,12 @@ class PrivilegedServerController(openstack_api.servers.ControllerV11):
         # This has been revised so that it is less coupled with
         # the implementation of the Servers API, which is in flux
 
-        try:
+        # KLUDGE to make this extension working with different nova branches
+        # in a soon future there will be only:
+        if hasattr(self, '_items'):
             servers = self._items(req, is_detail=True)
-        except exception.Invalid as err:
-            return exc.HTTPBadRequest(explanation=str(err))
+        else:
+            servers = self._get_servers(req, is_detail=True)
 
         ids = [server['id'] for server in servers['servers']]
 
