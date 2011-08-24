@@ -462,6 +462,16 @@ def project_dict(project):
     else:
         return {}
 
+def network_dict(network):
+    if network:
+        fields = ('created_at', 'updated_at', 'deleted_at','deleted',
+                  'id','injected','cidr','netmask','bridge','gateway','broadcast','dns1',
+                  'vlan','vpn_public_address','vpn_public_port','vpn_private_address','dhcp_start',
+                  'project_id','host','cidr_v6','gateway_v6','label','netmask_v6','bridge_interface','multi_host')
+        return dict((field, getattr(network, field)) for field in  fields)
+    else:
+        return {}
+
 
 def host_dict(host, compute_service, instances, volume_service, volumes, now):
     """Convert a host model object to a result dict"""
@@ -639,8 +649,6 @@ class ExtrasSnapshotController(object):
 class ExtrasFlavorController(openstack_api.flavors.ControllerV11):
     def _get_view_builder(self, req):
         class ViewBuilder(views.flavors.ViewBuilderV11):
-            def __init__(self, base_url):
-                self.base_url = base_url
 
             def _build_simple(self, flavor_obj):
                 simple = {
@@ -760,21 +768,28 @@ class UsageController(object):
                                    )).fetchall()
 
         rval = {}
+        flavors = {}
 
         for row in rows:
             o = {}
             for i in range(len(fields)):
                 o[fields[i]] = row[i]
             o['hours'] = self._hours_for(o, period_start, period_stop)
+            flavor_type = o['instance_type_id']
 
             try:
-                flavor = db.instance_type_get_by_id(context, o['instance_type_id'])
+                flavors[flavor_type] = \
+                    db.instance_type_get_by_id(context, flavor_type)
+
             except AttributeError:
                 # The most recent version of nova renamed this function
-                flavor = db.instance_type_get(context, o['instance_type_id'])
+                flavors[flavor_type] = \
+                    db.instance_type_get(context, flavor_type)
             except exception.InstanceTypeNotFound:
                 # can't bill if there is no instance type
                 continue
+
+            flavor = flavors[flavor_type]
 
             o['name'] = o['display_name']
             del(o['display_name'])
@@ -862,6 +877,7 @@ class UsageController(object):
         period_stop = self._parse_datetime(env.get('end', [datetime.utcnow().isoformat()])[0])
         return (period_start, period_stop)
 
+    # TODO(ja): add methods to just get summary
     def index(self, req):
         (period_start, period_stop) = self._get_datetime_range(req)
         context = req.environ['nova.context']
@@ -1062,6 +1078,33 @@ class AdminProjectController(object):
         return exc.HTTPAccepted()
 
 
+class AdminNetworkController(object):
+
+    def disassociate(self, req, id):
+        context = req.environ['nova.context']
+        LOG.audit(_("Disassociating network: %s %s"), id, context=context)
+        db.network_disassociate(context, id)
+        return exc.HTTPAccepted()
+
+    def index(self, req):
+        tenant_id = urlparse.parse_qs(req.environ['QUERY_STRING']).get('tenant_id', [None])[0]
+        context = req.environ['nova.context']
+        LOG.audit(_("Getting networks for project %s"), tenant_id or '<all>')
+        if context.is_admin and not tenant_id:
+            networks = db.network_get_all(context)
+        elif tenant_id:
+            networks = db.project_get_networks(context, tenant_id, associate=False)
+        else:
+            raise exc.HTTPNotFound()
+        result = [network_dict(net_ref) for net_ref in networks]
+        return  {'networks': result}
+
+    def get(self, req, id):
+        context = req.environ['nova.context']
+        net = db.network_get(context, id)
+        return {'network': network_dict(net)}
+
+    # TODO: implement full CRUD, not done right in nova too
 
 
 class ExtrasSecurityGroupController(object):
@@ -1279,6 +1322,9 @@ class Admin(object):
 
         resources.append(extensions.ResourceExtension('admin/projects',
                                                  AdminProjectController()))
+        resources.append(extensions.ResourceExtension('admin/networks',
+                                                 AdminNetworkController(), # TODO(chemikadze): full networking support
+                                                 member_actions={'disassociate': 'DELETE'}))
         resources.append(extensions.ResourceExtension('admin/services',
                                                  AdminServiceController()))
         resources.append(extensions.ResourceExtension('admin/quota_sets',
