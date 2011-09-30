@@ -43,11 +43,11 @@ class TenantManager(base.ManagerWithFind):
         """
         return self._list("/tenants", "tenants")
 
-    def update(self, tenant_id, description=None, enabled=None):
+    def update(self, tenant_id, tenant_name, description=None, enabled=None):
         """
         update a tenant with a new name and description
         """
-        body = {"tenant": {'id': tenant_id }}
+        body = {"tenant": {'id': tenant_id, 'name': tenant_name}}
         if enabled is not None:
             body['tenant']['enabled'] = enabled
         if description:
