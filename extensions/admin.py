@@ -32,7 +32,6 @@ from nova import flags
 from nova import log as logging
 from nova import quota
 import nova.image
-from nova.api.openstack import create_instance_helper
 from nova.auth import manager as auth_manager
 from nova.db.sqlalchemy.session import get_session
 from nova.db.sqlalchemy import models
@@ -110,116 +109,6 @@ class AdminQuotasController(object):
                 except exception.ProjectQuotaNotFound:
                     db.quota_create(context, project_id, key, value)
         return {'quota_set': quota.get_project_quotas(context, project_id)}
-
-
-class OverrideHelper(create_instance_helper.CreateInstanceHelper):
-    """Allows keypair name to be passed in request."""
-    def create_instance(self, req, body, create_method):
-        if not body:
-            raise faults.Fault(exc.HTTPUnprocessableEntity())
-
-        context = req.environ['nova.context']
-
-        password = self.controller._get_server_admin_password(body['server'])
-
-        key_name = body['server'].get('key_name')
-        key_data = None
-
-        if key_name:
-            try:
-                key_pair = db.key_pair_get(context, context.user_id, key_name)
-                key_name = key_pair['name']
-                key_data = key_pair['public_key']
-            except:
-                msg = _("Can not load the requested key %s" % key_name)
-                return faults.Fault(exc.HTTPBadRequest(msg))
-        else:
-            key_name = None
-            key_data = None
-            key_pairs = db.key_pair_get_all_by_user(context, context.user_id)
-            if key_pairs:
-                key_pair = key_pairs[0]
-                key_name = key_pair['name']
-                key_data = key_pair['public_key']
-
-        image_href = self.controller._image_ref_from_req_data(body)
-        try:
-            image_service, image_id = nova.image.get_image_service(image_href)
-            kernel_id, ramdisk_id = self._get_kernel_ramdisk_from_image(req,
-                                                                        image_service,
-                                                                        image_id)
-            images = set([str(x['id']) for x in image_service.index(context)])
-            assert str(image_id) in images
-        except Exception, e:
-            msg = _("Cannot find requested image %(image_href)s: %(e)s" %
-                                                                    locals())
-            raise faults.Fault(exc.HTTPBadRequest(explanation=msg))
-
-        personality = body['server'].get('personality')
-
-        injected_files = []
-        if personality:
-            injected_files = self._get_injected_files(personality)
-
-        flavor_id = self.controller._flavor_id_from_req_data(body)
-
-        if not 'name' in body['server']:
-            msg = _("Server name is not defined")
-            raise exc.HTTPBadRequest(explanation=msg)
-
-        zone_blob = body['server'].get('blob')
-        name = body['server']['name']
-        self._validate_server_name(name)
-        name = name.strip()
-
-        reservation_id = body['server'].get('reservation_id')
-
-        security_groups = filter(bool, body['server']
-                                       .get('security_groups', '')
-                                       .split(',')) + ['default']
-
-        for group_name in security_groups:
-            if not db.security_group_exists(context,
-                                            context.project_id,
-                                            group_name):
-                group = {'user_id': context.user_id,
-                         'project_id': context.project_id,
-                         'name': group_name,
-                         'description': ''}
-                db.security_group_create(context, group)
-
-        try:
-            inst_type = \
-                    instance_types.get_instance_type_by_flavor_id(flavor_id)
-            extra_values = {
-                'instance_type': inst_type,
-                'image_ref': image_href,
-                'password': password}
-
-            return (extra_values,
-                    create_method(context,
-                                  inst_type,
-                                  image_id,
-                                  kernel_id=kernel_id,
-                                  ramdisk_id=ramdisk_id,
-                                  display_name=name,
-                                  display_description=name,
-                                  key_name=key_name,
-                                  key_data=key_data,
-                                  metadata=body['server'].get('metadata', {}),
-                                  injected_files=injected_files,
-                                  admin_password=password,
-                                  zone_blob=zone_blob,
-                                  user_data=body['server'].get('user_data', None),
-                                  security_group=security_groups,
-                                  reservation_id=reservation_id))
-        except quota.QuotaError as error:
-            self._handle_quota_error(error)
-        except exception.ImageNotFound as error:
-            msg = _("Can not find requested image")
-            raise faults.Fault(exc.HTTPBadRequest(explanation=msg))
-
-        # Let the caller deal with unhandled exceptions.
 
 
 def user_dict(user, base64_file=None):
@@ -357,7 +246,7 @@ class PrivilegedServerController(openstack_api.servers.ControllerV11):
 
         if 'name' in body['server']:
             name = body['server']['name']
-            self.helper._validate_server_name(name)
+            self._validate_server_name(name)
             update_dict['display_name'] = name.strip()
 
         if 'description' in body['server']:
@@ -375,7 +264,6 @@ class PrivilegedServerController(openstack_api.servers.ControllerV11):
 
     def __init__(self):
         super(PrivilegedServerController, self).__init__()
-        self.helper = OverrideHelper(self)
 
 
 def downgrade_context(f):
