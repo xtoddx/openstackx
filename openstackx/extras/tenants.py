@@ -48,8 +48,8 @@ class TenantManager(base.ManagerWithFind):
         update a tenant with a new name and description
         """
         body = {"tenant": {'id': tenant_id}}
-        if name is not None:
-            body['tenant']['name'] = name
+        if tenant_name is not None:
+            body['tenant']['name'] = tenant_name
         if enabled is not None:
             body['tenant']['enabled'] = enabled
         if description:
