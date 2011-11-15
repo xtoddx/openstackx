@@ -32,7 +32,6 @@ from nova import exception
 from nova import flags
 from nova import log as logging
 from nova import quota
-import nova.image
 from nova.auth import manager as auth_manager
 from nova.db.sqlalchemy.session import get_session
 from nova.db.sqlalchemy import models
@@ -168,7 +167,7 @@ def host_dict(host, compute_service, instances, volume_service, volumes, now):
     return rv
 
 
-class PrivilegedServerController(openstack_api.servers.ControllerV11):
+class PrivilegedServerController(openstack_api.servers.Controller):
     def _build_extended_attributes(self, inst):
 
         security_groups = [i.name for i in inst.get(
@@ -319,9 +318,9 @@ class ExtrasSnapshotController(object):
                               'name': name }}
 
 
-class ExtrasFlavorController(openstack_api.flavors.ControllerV11):
+class ExtrasFlavorController(openstack_api.flavors.Controller):
     def _get_view_builder(self, req):
-        class ViewBuilder(views.flavors.ViewBuilderV11):
+        class ViewBuilder(views.flavors.ViewBuilder):
 
             def _build_simple(self, flavor_obj):
                 simple = {
@@ -970,25 +969,13 @@ class ExtrasSecurityGroupRuleController(ExtrasSecurityGroupController):
         return exc.HTTPAccepted()
 
 
-class Admin(object):
+class Admin(extensions.ExtensionDescriptor):
+    """The Admin API Extension"""
 
-    def __init__(self):
-        pass
-
-    def get_name(self):
-        return "Admin Controller"
-
-    def get_alias(self):
-        return "ADMIN"
-
-    def get_description(self):
-        return "The Admin API Extension"
-
-    def get_namespace(self):
-        return "http:TODO/"
-
-    def get_updated(self):
-        return "2011-05-25 16:12:21.656723"
+    name = "Admin Controller"
+    alias = "ADMIN"
+    namespace = "http:TODO/"
+    updated = "2011-05-25 16:12:21.656723"
 
     def get_resources(self):
         resources = []
