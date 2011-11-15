@@ -1,6 +1,7 @@
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 
 # Copyright 2011 OpenStack LLC.
+# Copyright 2011 OpenStack NTT.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -422,7 +423,7 @@ class UsageController(object):
                   'hostname',
                   'display_name',
                   'host',
-                  'vm_state',
+                  'task_state',
                   'instance_type_id',
                   'launched_at',
                   'terminated_at']
@@ -484,9 +485,9 @@ class UsageController(object):
             if o['ended_at']:
                 o['state'] = 'terminated'
             else:
-                o['state'] = o['vm_state']
+                o['state'] = o['task_state']
 
-            del(o['vm_state'])
+            del(o['task_state'])
 
             now = datetime.utcnow()
 
