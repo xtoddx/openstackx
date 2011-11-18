@@ -38,10 +38,10 @@ from nova.db.sqlalchemy import models
 from nova.db.sqlalchemy import api as sqlalchemy_api
 
 
-import nova.api.openstack as openstack_api
-from nova.api.openstack import extensions
-from nova.api.openstack import faults
-from nova.api.openstack import views
+from nova.api.openstack import wsgi
+import nova.api.openstack.v2 as openstack_api
+from nova.api.openstack.v2 import extensions
+from nova.api.openstack.v2 import views
 
 from nova.compute import instance_types
 from nova.scheduler import api as scheduler_api
@@ -239,7 +239,7 @@ class PrivilegedServerController(openstack_api.servers.Controller):
             raise exc.HTTPUnprocessableEntity()
 
         if not body:
-            return faults.Fault(exc.HTTPUnprocessableEntity())
+            return wsgi.Fault(exc.HTTPUnprocessableEntity())
 
         ctxt = req.environ['nova.context']
         update_dict = {}
@@ -258,7 +258,7 @@ class PrivilegedServerController(openstack_api.servers.Controller):
         try:
             self.compute_api.update(ctxt, id, **update_dict)
         except exception.NotFound:
-            return faults.Fault(exc.HTTPNotFound())
+            return wsgi.Fault(exc.HTTPNotFound())
 
         return exc.HTTPNoContent()
 
