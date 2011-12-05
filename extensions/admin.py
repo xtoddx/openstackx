@@ -322,7 +322,7 @@ class ExtrasFlavorController(openstack_api.flavors.Controller):
     def _get_view_builder(self, req):
         class ViewBuilder(views.flavors.ViewBuilder):
 
-            def _build_simple(self, flavor_obj):
+            def basic(self, flavor_obj):
                 simple = {
                     "id": flavor_obj["flavorid"],
                     "name": flavor_obj["name"],
@@ -333,9 +333,7 @@ class ExtrasFlavorController(openstack_api.flavors.Controller):
                 }
                 return simple
 
-
-        base_url = req.application_url
-        return ViewBuilder(base_url)
+        return ViewBuilder()
 
 
 class AdminFlavorController(ExtrasFlavorController):
@@ -346,16 +344,15 @@ class AdminFlavorController(ExtrasFlavorController):
         vcpus = body['flavor'].get('vcpus')
         local_gb = body['flavor'].get('local_gb')
         flavorid = body['flavor'].get('flavorid')
-        swap = body['flavor'].get('swap')
-        rxtx_quota = body['flavor'].get('rxtx_quota')
-        rxtx_cap = body['flavor'].get('rxtx_cap')
+        swap = body['flavor'].get('swap', 0)
+        rxtx_factor = body['flavor'].get('rxtx_factor', 1)
 
         context = req.environ['nova.context']
         flavor = instance_types.create(name, memory_mb, vcpus,
                                        local_gb, flavorid,
-                                       swap, rxtx_quota, rxtx_cap)
+                                       swap, rxtx_factor)
         builder = self._get_view_builder(req)
-        values = builder.build(body['flavor'], is_detail=True)
+        values = builder.show(req, flavor)
         return dict(flavor=values)
 
     def delete(self, req, id):

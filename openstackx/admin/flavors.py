@@ -18,7 +18,7 @@ class FlavorManager(compute.FlavorManager):
     resource_class = Flavor
 
     def create(self, name, memory_mb, vcpus, local_gb, flavorid,
-               swap=0, rxtx_quota=0, rxtx_cap=0):
+               swap=0, rxtx_factor=1):
 
         body = {}
         body['flavor'] = {}
@@ -28,9 +28,8 @@ class FlavorManager(compute.FlavorManager):
         body['flavor']['local_gb'] = local_gb
         body['flavor']['flavorid'] = flavorid
         body['flavor']['swap'] = swap
-        body['flavor']['rxtx_quota'] = rxtx_quota
-        body['flavor']['rxtx_cap'] = rxtx_cap
-        
+        body['flavor']['rxtx_factor'] = rxtx_factor
+
         return self._create('/admin/flavors', body, "flavor")
 
     def delete(self, id, purge=False):
@@ -39,7 +38,7 @@ class FlavorManager(compute.FlavorManager):
     def list(self):
         """
         Get a list of all flavors.
-        
+
         :rtype: list of :class:`Flavor`.
         """
         return self._list("/admin/flavors", "flavors")
