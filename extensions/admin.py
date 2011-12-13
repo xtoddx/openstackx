@@ -209,6 +209,7 @@ class PrivilegedServerController(openstack_api.servers.Controller):
         else:
             servers = self._get_servers(req, is_detail=True)
 
+        # The 'id' attribute here is actually the uuid of the server
         ids = [server['id'] for server in servers['servers']]
 
         context = req.environ['nova.context']
@@ -216,8 +217,8 @@ class PrivilegedServerController(openstack_api.servers.Controller):
 
         instance_map = {}
         for i in session.query(models.Instance).filter(
-                               models.Instance.id.in_(ids)).all():
-            instance_map[i.id] = i
+                               models.Instance.uuid.in_(ids)).all():
+            instance_map[i.uuid] = i
 
         for s in servers['servers']:
             s['attrs'] = self._build_extended_attributes(instance_map[s['id']])
