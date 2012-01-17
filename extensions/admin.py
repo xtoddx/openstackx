@@ -39,9 +39,9 @@ from nova.db.sqlalchemy import api as sqlalchemy_api
 
 
 from nova.api.openstack import wsgi
-import nova.api.openstack.v2 as openstack_api
-from nova.api.openstack.v2 import extensions
-from nova.api.openstack.v2 import views
+import nova.api.openstack.compute as openstack_api
+from nova.api.openstack import extensions
+from nova.api.openstack.compute import views
 
 from nova.compute import instance_types
 from nova.scheduler import api as scheduler_api
