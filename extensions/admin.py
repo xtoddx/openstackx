@@ -295,10 +295,10 @@ class ExtrasConsoleController(object):
         compute_api = compute.API()
         if console_type == 'text':
             output = compute_api.get_console_output(
-                      context, instance=compute_api.get(context, server_id))
+                      context, compute_api.get(context, server_id))
         elif console_type == 'vnc':
             output = compute_api.get_vnc_console(
-                      context, instance=compute_api.get(context, server_id))['url']
+                      context, compute_api.get(context, server_id))['url']
         else:
             raise Exception("Not Implemented")
         return {'console':{'id': '', 'type': console_type, 'output': output}}
